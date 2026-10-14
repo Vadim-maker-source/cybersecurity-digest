@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -6,7 +7,7 @@ class Strict(BaseModel):
 class Fact(Strict):
     text: str
     quote: str
-    kind: str = 'fact'
+    kind: Literal['fact','impact','scale','urgency','uncertainty','conflict']
     certainty: str = 'reported'
 
 class ExtractedEvent(Strict):

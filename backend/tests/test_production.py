@@ -53,3 +53,9 @@ def test_fact_is_not_assumed_to_describe_a_consequence():
     events=[{'event_id':'e','claims':[{'claim_id':'c','kind':'fact','text':'СМИ сообщили о планах'}]}]
     assert restrict_consequences(items,events)
     assert not items[0]['consequences']['claim_ids']
+
+def test_fact_kind_must_be_classified_explicitly():
+    from app.schemas import Fact
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):Fact(text='Сервис остановлен',quote='Сервис остановлен')
+    assert Fact(text='Сервис остановлен',quote='Сервис остановлен',kind='impact').kind=='impact'
