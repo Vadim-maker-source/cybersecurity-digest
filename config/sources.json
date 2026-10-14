@@ -1,0 +1,532 @@
+[
+  {
+    "name": "SecurityLab",
+    "url": "https://www.securitylab.ru",
+    "feed_url": "https://www.securitylab.ru/_services/export/rss/news/",
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "securitylab_rss",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "verified",
+      "crawl_delay": 10,
+      "date_policy": "iso_metadata_and_rss_agreement_required",
+      "body_selector": "[itemprop='articleBody']",
+      "notes": "RSS HTTP 200, 100 items. HTML date meta[name='article:published_time'] and time[datetime]. Use articleBody: first article element can be an advertisement.",
+      "candidate_section_url": "https://www.securitylab.ru/news/",
+      "allowed_hosts": [
+        "www.securitylab.ru",
+        "securitylab.ru"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://www.securitylab.ru/robots.txt",
+        "https://securitylab.ru/robots.txt"
+      ]
+    }
+  },
+  {
+    "name": "Хакер",
+    "url": "https://xakep.ru",
+    "feed_url": "https://xakep.ru/feed/",
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "xakep_rss",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "date_conflict",
+      "crawl_delay": 30,
+      "date_policy": "conflict_requires_review",
+      "body_selector": ".bdaia-post-content",
+      "notes": "RSS HTTP 200, 10 items. Preserve and compare RSS pubDate with meta[itemprop='datePublished']. Sample has 3-hour discrepancy; exclude from verified digest until reviewed. Strip #current_issue_box, advertising, script/style, subscription/footer blocks; prefer direct body paragraphs.",
+      "candidate_section_url": "https://xakep.ru/",
+      "allowed_hosts": [
+        "xakep.ru"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://xakep.ru/robots.txt"
+      ]
+    }
+  },
+  {
+    "name": "ComNews",
+    "url": "https://www.comnews.ru/information_security",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Коммерсантъ",
+    "url": "https://www.kommersant.ru/theme/1267",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "ТАСС",
+    "url": "https://tass.ru/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "РИА Новости",
+    "url": "https://ria.ru/kiberbezopasnost",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "IT-World",
+    "url": "https://www.it-world.ru/security/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "SecurityMedia",
+    "url": "https://securitymedia.org",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "securitymedia_html",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "html_verified_feed_invalid",
+      "crawl_delay": 10,
+      "date_policy": "day_precision_requires_review_for_strict_24h_window",
+      "body_selector": ".education-content__wrapper",
+      "notes": "Homepage advertises /rss/ but HTTP 200 response is HTML Cannot find 'rss' template with page ''; reject invalid XML despite XML Content-Type. /news/ HTML works: article a[href], time.date[datetime] in DD.MM.YYYY. Article date has no time; preserve day precision and exclude strict rolling window when interval membership is ambiguous.",
+      "candidate_section_url": "https://securitymedia.org/news/",
+      "allowed_hosts": [
+        "securitymedia.org"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://securitymedia.org/robots.txt"
+      ],
+      "discovered_feed_url": "https://securitymedia.org/rss/",
+      "feed_error": "INVALID_XML"
+    }
+  },
+  {
+    "name": "InfoWatch",
+    "url": "https://www.infowatch.ru/analytics/novosti-ib",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Инфобезопасность",
+    "url": "https://infobezopasnost.ru/blog/news/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "ICT.Moscow",
+    "url": "https://ict.moscow/projects/cybersecurity/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Газета.Ru",
+    "url": "https://www.gazeta.ru/tech",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Аргументы и факты",
+    "url": "https://aif.ru/techno/web",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "CNews",
+    "url": "https://safe.cnews.ru",
+    "feed_url": "https://www.cnews.ru/inc/rss/safe.xml",
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "cnews_rss",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "verified",
+      "crawl_delay": 10,
+      "date_policy": "rss_timezone_primary_jsonld_local_requires_declared_zone",
+      "body_selector": "article > p, article > h2, article > h3",
+      "notes": "RSS HTTP 200, 100 items. JSON-LD sample has date without timezone; RSS supplies +0300. Declare Europe/Moscow source policy and preserve original values/precision. RSS safe.cnews.ru article canonical can point at www.cnews.ru; validate both hosts and robots. Remove menus, banners, promotion, comments.",
+      "candidate_section_url": "https://safe.cnews.ru/",
+      "allowed_hosts": [
+        "safe.cnews.ru",
+        "www.cnews.ru"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://safe.cnews.ru/robots.txt",
+        "https://www.cnews.ru/robots.txt"
+      ]
+    }
+  },
+  {
+    "name": "Хабр",
+    "url": "https://habr.com/ru/hubs/infosecurity/",
+    "feed_url": "https://habr.com/ru/rss/hubs/infosecurity/articles/?fl=ru",
+    "publisher_type": "platform",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "habr_rss",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "verified",
+      "crawl_delay": 10,
+      "date_policy": "rss_and_jsonld_iso_agreement_required",
+      "body_selector": ".article-body, #post-content-body",
+      "notes": "RSS HTTP 200, 40 items. JSON-LD datePublished and time[datetime]. Strip known UTM parameters before fetching article; robots disallows tracked URLs. Authored platform content: retain author and publisher distinction. Tutorials and promotional posts still need topical/event classification.",
+      "candidate_section_url": "https://habr.com/ru/hubs/infosecurity/articles/",
+      "allowed_hosts": [
+        "habr.com"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://habr.com/robots.txt"
+      ]
+    }
+  },
+  {
+    "name": "RB.RU",
+    "url": "https://rb.ru/tag/cybersecurity/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "3DNews",
+    "url": "https://3dnews.ru/security",
+    "feed_url": "https://3dnews.ru/news/rss/",
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": "3dnews_rss",
+      "verified_at": "2026-10-14T18:39:17Z",
+      "verification_status": "verified",
+      "crawl_delay": 10,
+      "date_policy": "rss_and_jsonld_iso_agreement_required",
+      "body_selector": "[itemprop='articleBody']",
+      "notes": "RSS HTTP 200, 62 items. Feed is general IT news, not a dedicated security-only feed; classification required. Original case /security section is retained as registry url, tested feed derives from homepage HTML. Sample Starship article is unrelated to cybersecurity and must be rejected.",
+      "candidate_section_url": "https://3dnews.ru/news/rss/",
+      "allowed_hosts": [
+        "3dnews.ru"
+      ],
+      "robots_checked": true,
+      "robots_url": [
+        "https://3dnews.ru/robots.txt"
+      ]
+    }
+  },
+  {
+    "name": "Компьютерра",
+    "url": "https://www.computerra.ru/tag/security/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "ITWeek",
+    "url": "https://www.itweek.ru/security/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "iXBT",
+    "url": "https://www.ixbt.com/live/security/",
+    "feed_url": null,
+    "publisher_type": "platform",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Overclockers",
+    "url": "https://overclockers.ru/tag/security",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Российская газета",
+    "url": "https://rg.ru/theme/technologies/internet/kiberbezopasnost/",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Известия",
+    "url": "https://iz.ru/tag/kiberbezopasnost",
+    "feed_url": null,
+    "publisher_type": "media",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Positive Technologies",
+    "url": "https://ptsecurity.com/research/analytics/",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Солар",
+    "url": "https://rt-solar.ru/events/news/",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "Лаборатория Касперского",
+    "url": "https://www.kaspersky.ru/about/press-releases",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "UserGate",
+    "url": "https://www.usergate.com/ru",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  },
+  {
+    "name": "ИнфоТеКС",
+    "url": "https://infotecs.ru",
+    "feed_url": null,
+    "publisher_type": "vendor",
+    "enabled": false,
+    "agreed": false,
+    "meta": {
+      "adapter": null,
+      "verified_at": null,
+      "verification_status": "not_verified",
+      "crawl_delay": null,
+      "date_policy": "unverified_exclude_until_configured",
+      "body_selector": null,
+      "notes": "Адрес из реестра кейса; доступность, robots.txt, новостной раздел и способ извлечения ещё не проверены. Feed URL не предполагается и не выдумывается."
+    }
+  }
+]
