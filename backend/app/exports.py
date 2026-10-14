@@ -49,6 +49,11 @@ def safe_package(run,digest,test_outputs=None,test_runs=None,model_calls=None):
     files['tests/report.md']='# Обязательные проверки\n'+('\n'.join(f"- {r['name']}: {r['status']}" for r in test_outputs['results']) if test_outputs else 'Не запускались')
     files['model_calls.json']=model_calls or []
     for mode,result in (test_runs or {}).items():files['tests/'+mode+'/results.json']=result
+    if not settings.enable_demo:
+        files={name:content for name,content in files.items() if not name.startswith('tests/')}
+        files['ai_description.md']='# Работа ИИ\nGigaChat выполняет классификацию, извлечение фактов, объединение, отбор, написание и смысловую проверку. Факты связаны с цитатами из публикаций. Проверяются даты, числа, ID, источники, период и лимиты. Итог утверждает редактор.\n'
+        files['README.md']='# Результаты КиберСводки\nПериод: start < published_at <= end, Europe/Moscow.\nСтатус: '+digest.status+'\nМатериалы, ссылки и цитаты сохранены в соседних файлах.\n'
+        files['manifest.json'].pop('test_status',None)
     buffer=io.BytesIO()
     with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as archive:
         for filename,content in files.items():
