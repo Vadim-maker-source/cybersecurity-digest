@@ -17,6 +17,7 @@ from .llm import GigaChat,ModelError
 from .schemas import Verification
 from .parsers import parse_import
 from .exports import safe_package,email_html,email_message,log_csv
+from .mail import check_connection
 
 @asynccontextmanager
 async def lifespan(app):
@@ -397,6 +398,11 @@ async def settings_info(u=Depends(user),db=Depends(db_session)):
 async def test_gigachat(u=Depends(admin)):
     result=await GigaChat().models()
     return {'status':'connected','models':[m['id'] for m in result.get('data',[]) if m['id'].startswith('GigaChat')]}
+
+@app.post('/api/v1/settings/smtp/test')
+async def test_smtp(u=Depends(admin)):
+    try:return await asyncio.to_thread(check_connection)
+    except Exception:raise HTTPException(503,'Не удалось подключиться к почте. Проверьте SMTP и пароль приложения на сервере.')
 
 @app.patch('/api/v1/settings')
 async def save_settings(body:dict,u=Depends(admin),db=Depends(db_session)):

@@ -8,6 +8,7 @@ from .pipeline import process
 from .parsers import collect_source,fetch,robots_allowed,article_html
 from .fixtures import CASES,CONTROL
 from .exports import email_message
+from .mail import connection as smtp_connection
 from .validators import MOSCOW,parse_date
 
 class Cancelled(Exception): pass
@@ -143,13 +144,7 @@ async def run_daily(job):
     return result
 
 def send_mail(data,recipient):
-    if not settings.smtp_host or not settings.smtp_from: raise ValueError('SMTP_NOT_CONFIGURED')
-    if settings.smtp_security not in ('ssl','starttls'):raise ValueError('SMTP_SECURITY must be ssl or starttls')
-    factory=smtplib.SMTP_SSL if settings.smtp_security=='ssl' else smtplib.SMTP
-    options={'context':ssl.create_default_context()} if settings.smtp_security=='ssl' else {}
-    with factory(settings.smtp_host,settings.smtp_port,timeout=20,**options) as smtp:
-        if settings.smtp_security=='starttls':smtp.starttls(context=ssl.create_default_context())
-        if settings.smtp_username: smtp.login(settings.smtp_username,settings.smtp_password)
+    with smtp_connection() as smtp:
         smtp.send_message(email_message(data,recipient))
     return {'status':'accepted_by_smtp','recipient':recipient,'message':'SMTP принял письмо; доставка в папку входящих не подтверждена'}
 
