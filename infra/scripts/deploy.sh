@@ -24,6 +24,8 @@ if [[ ! -f shared/letsencrypt/live/94.232.42.94/fullchain.pem ]]; then
     docker run --rm -v "$PWD/shared/letsencrypt:/etc/letsencrypt" -v "$PWD/shared/acme:/var/www/acme" certbot/certbot:v5.8.0 certonly --non-interactive --agree-tos --register-unsafely-without-email --preferred-profile shortlived --webroot --webroot-path /var/www/acme --ip-address 94.232.42.94
 fi
 "${compose[@]}" up --build -d
+"${compose[@]}" exec -T nginx nginx -t
+"${compose[@]}" exec -T nginx nginx -s reload
 for attempt in $(seq 1 90); do
     if curl --fail --silent https://94.232.42.94:6752/api/v1/health/ready; then printf '\nHTTPS and PostgreSQL ready\n'; exit 0; fi
     sleep 2
