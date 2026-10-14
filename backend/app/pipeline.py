@@ -4,6 +4,7 @@ from datetime import timedelta
 from .schemas import Extraction, Grouping, Ranking, Composition, Verification
 from .validators import parse_date, period_reason, safe_display_url, validate_quote, validate_composition, count_chars, MOSCOW
 from .llm import GigaChat, ModelError
+from .verification import verify_sources,restrict_consequences
 from .core import ROOT
 KEYWORDS=json.loads((ROOT/'config'/'keywords.json').read_text(encoding='utf-8'))['terms']
 
@@ -95,7 +96,7 @@ def validation_for(data):
 def context_fingerprint(mode):
     from .core import settings
     from .llm import PROMPTS
-    files=[Path(__file__),Path(__file__).with_name('schemas.py'),Path(__file__).with_name('validators.py'),ROOT/'config'/'keywords.json',*sorted(PROMPTS.glob('*.txt'))]
+    files=[Path(__file__),Path(__file__).with_name('schemas.py'),Path(__file__).with_name('validators.py'),Path(__file__).with_name('verification.py'),ROOT/'config'/'keywords.json',*sorted(PROMPTS.glob('*.txt'))]
     return hashlib.sha256((''.join(p.read_text(encoding='utf-8') for p in files)+json.dumps({'mode':mode,'model':settings.gigachat_model,'temperature':settings.gigachat_temperature})).encode()).hexdigest()
 
 async def process(articles,control_time,mode='live',run_id=None,progress=None,group_overrides=None,checkpoint=None,save_checkpoint=None):
@@ -270,6 +271,7 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
                     for sentence in [item['title'],*item['summary'],item['consequences'],item['short']]:
                         sentence['text']=sentence['text'].replace('\u2014','-')
                         sentence['claim_ids']=[cid.strip() for cid in sentence['claim_ids']]
+                composition_repairs.extend(restrict_consequences(items,selected))
                 align_formats(items,selected)
                 try:
                     validate_composition(items,selected)
@@ -307,12 +309,32 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
     await report('Проверка фактов и лимитов',90)
     verification={'supported':True,'problems':[],'provider':'fixtures: структурные проверки, без смыслового подтверждения моделью'}
     if checkpoint.get('verification') is not None:verification=checkpoint['verification']
-    elif model and items: verification={**(await model.call('verify',{'items':items,'events':selected},Verification)).model_dump(),'provider':'GigaChat'}
+    elif model and items: verification=await verify_sources(model,items,selected,articles,control_time)
     await cache(stage='complete',groups=groups,ranking=ranking,items=items,verification=verification)
+    if model and verification.get('per_event'):
+        rejected={r['event_id']:r['problems'] for r in verification['per_event'] if not r['supported']}
+        if rejected:
+            for event in events:
+                if event['event_id'] in rejected:
+                    event['selected']=False
+                    event['ranking']['reason']='Не включено после смысловой проверки: '+'; '.join(rejected[event['event_id']])
+            selected=[e for e in selected if e['event_id'] not in rejected]
+            items=[i for i in items if i['event_id'] not in rejected]
+            for decision in decisions:
+                if any(eid in rejected for eid in decision.get('selected_event_ids',[])):
+                    decision['selected_event_ids']=[eid for eid in decision['selected_event_ids'] if eid not in rejected]
+                    decision['warnings'].append('SEMANTIC_REVIEW_REQUIRED')
+                    if not decision['selected_event_ids']:
+                        decision.update(status='not_selected',reason_code='SEMANTIC_REVIEW_REQUIRED',
+                            reason_text='Смысловая проверка по полному источнику не подтвердила пересказ. '+
+                            '; '.join(p for eid in decision['event_group_ids'] if eid in rejected for p in rejected[eid]))
+            verification={**verification,'supported':True,'problems':[],
+                          'excluded_events':[{'event_id':eid,'problems':problems} for eid,problems in rejected.items()]}
     exclusion_counts={}
     for d in decisions:
         if d['status']=='excluded': exclusion_counts[d['reason_code']]=exclusion_counts.get(d['reason_code'],0)+1
-    zero_reason='Подходящих самостоятельных событий в наборе: '+str(len(events))+'.'
+    zero_reason='Подходящих подтверждённых событий для выпуска: '+str(len(selected))+'.'
+    if verification.get('excluded_events'):zero_reason+=' Не включено после смысловой проверки: '+str(len(verification['excluded_events']))+'. Подробности доступны в журнале.'
     if exclusion_counts: zero_reason+=' Исключено материалов: '+str(sum(exclusion_counts.values()))+'. Причины доступны в журнале.'
     data=render_digest(items,selected,T,zero_reason)
     data['semantic_verification']=verification

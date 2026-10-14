@@ -18,6 +18,7 @@ from .schemas import Verification
 from .parsers import parse_import
 from .exports import safe_package,email_html,email_message,log_csv
 from .mail import check_connection
+from .verification import verify_sources
 
 @asynccontextmanager
 async def lifespan(app):
@@ -286,8 +287,8 @@ async def validate_digest(id:str,u=Depends(editor),db=Depends(db_session)):
     data=json.loads(json.dumps(d.data))
     validate_composition(data['items'],data['events'])
     if data['mode']=='live':
-        verify=await GigaChat(d.run_id).call('verify',{'items':data['items'],'events':data['events']},Verification)
-        data['semantic_verification']=verify.model_dump()
+        run=await db.get(Run,d.run_id)
+        data['semantic_verification']=await verify_sources(GigaChat(d.run_id),data['items'],data['events'],run.snapshot,run.control_time.isoformat())
     else:
         # Fixture edits only pass if summary/short remain extractive and supported by quotes.
         errors=[]

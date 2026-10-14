@@ -34,3 +34,22 @@ def test_plaintext_smtp_rejected(monkeypatch):
     monkeypatch.setattr(settings,'smtp_from','unit@example.org')
     monkeypatch.setattr(settings,'smtp_security','none')
     with pytest.raises(ValueError,match='SMTP_SECURITY'):mail.check_connection()
+
+@pytest.mark.asyncio
+async def test_verifier_receives_omitted_denial_from_full_source():
+    from app.verification import verify_sources
+    from app.schemas import Verification
+    class Reviewer:
+        async def call(self,stage,payload,schema):
+            assert 'опроверг' in payload['source_documents'][0]['text']
+            return Verification(supported=False,problems=['В пересказе пропущено опровержение'])
+    result=await verify_sources(Reviewer(),[{'event_id':'e'}],[{'event_id':'e','sources':[{'id':'a'}]}],
+        [{'id':'a','text':'СМИ сообщили о выходе. Представитель опроверг сообщение.'}],'2026-10-15T00:00:00+03:00')
+    assert not result['supported'] and result['per_event'][0]['problems']
+
+def test_fact_is_not_assumed_to_describe_a_consequence():
+    from app.verification import restrict_consequences
+    items=[{'event_id':'e','consequences':{'text':'Организации потеряют доступ','claim_ids':['c']}}]
+    events=[{'event_id':'e','claims':[{'claim_id':'c','kind':'fact','text':'СМИ сообщили о планах'}]}]
+    assert restrict_consequences(items,events)
+    assert not items[0]['consequences']['claim_ids']
