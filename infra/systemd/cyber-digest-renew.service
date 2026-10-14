@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew CyberSvodka IP certificate
+After=docker.service network-online.target
+Requires=docker.service
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/cybersecurity-digest
+ExecStart=/bin/bash /opt/cybersecurity-digest/infra/scripts/renew-certificate.sh
