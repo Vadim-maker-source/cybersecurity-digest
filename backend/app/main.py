@@ -19,6 +19,7 @@ from .parsers import parse_import
 from .exports import safe_package,email_html,email_message,log_csv
 from .mail import check_connection
 from .verification import verify_sources
+from .public import public_digest
 
 @asynccontextmanager
 async def lifespan(app):
@@ -113,6 +114,18 @@ async def overview(u=Depends(user),db=Depends(db_session)):
         'article_count':await db.scalar(select(func.count()).select_from(Article).where(Article.dataset_id==d.id))} for d in datasets],
         'digests':[out_digest(d) for d in digests],'jobs':[out_job(j) for j in jobs],
         'integrations':{'gigachat':bool(settings.gigachat_auth_key),'model':settings.gigachat_model,'smtp':bool(settings.smtp_host),'demo_enabled':settings.enable_demo,'app_env':settings.app_env,'public_base_url':settings.public_base_url}}
+
+@app.get('/api/v1/public/digests')
+async def public_digests(response:Response,db=Depends(db_session)):
+    # Only real, successfully checked revisions; edits immediately remove a draft
+    # from this view until it passes verification again.
+    stmt=(select(Digest).join(Run,Digest.run_id==Run.id)
+        .where(Run.mode=='live',Digest.status.in_(['needs_review','approved']),
+            Digest.validation['passed'].as_boolean()==True)
+        .order_by(Digest.created_at.desc()).limit(20))
+    records=(await db.scalars(stmt)).all()
+    response.headers['Cache-Control']='no-store'
+    return {'items':[public_digest(d) for d in records]}
 
 @app.get('/api/v1/articles')
 async def articles(dataset_id:str|None=None,query:str='',offset:int=0,limit:int=50,u=Depends(user),db=Depends(db_session)):
