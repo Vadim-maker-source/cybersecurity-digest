@@ -7,6 +7,15 @@ test('Рабочая редакция без демонстрационных д
  await page.getByLabel('Пароль',{exact:true}).fill(password!);
  await page.getByRole('button',{name:'Войти',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Обзор редакции',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Новый дайджест',exact:true})).toBeEnabled();
+ const control=page.getByLabel('Контрольное время',{exact:true});
+ await control.fill('2020-01-01T12:30');
+ const refreshed=page.waitForResponse(response=>response.url().endsWith('/api/v1/overview'));
+ await page.getByRole('button',{name:'Обновить данные',exact:true}).click();
+ await refreshed;
+ await expect(control).toHaveValue('2020-01-01T12:30');
+ await page.getByRole('button',{name:'Сейчас',exact:true}).click();
+ await expect(control).not.toHaveValue('2020-01-01T12:30');
  await expect(page.getByRole('button',{name:'Загрузить демонстрацию',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Проверки',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Источники',exact:true}).click();
