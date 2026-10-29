@@ -48,14 +48,11 @@ def test_anonymous_reader_gets_only_validated_real_digests():
     finally:app.dependency_overrides.clear()
 
 
-def test_anonymous_reader_cannot_access_editor_or_mail():
-    async def database():yield object()
-    app.dependency_overrides[db_session]=database
-    try:
-        client=TestClient(app)
-        for path in ['/overview','/settings','/subscribers','/runs/private','/digests/private']:
-            assert client.get('/api/v1'+path).status_code==401, path
-        for path in ['/collection-runs','/processing-runs','/digests/private/send','/settings/smtp/test']:
-            assert client.post('/api/v1'+path,json={}).status_code==401, path
-        assert client.patch('/api/v1/digests/private/draft',json={}).status_code==401
-    finally:app.dependency_overrides.clear()
+def test_open_workspace_does_not_expose_owner_settings_or_mail():
+    client=TestClient(app)
+    for path in ['/settings','/subscribers','/schedules','/audit']:
+        assert client.get('/api/v1'+path).status_code==403, path
+    for path in ['/digests/private/send','/settings/smtp/test']:
+        assert client.post('/api/v1'+path,json={}).status_code==403, path
+    for path in ['/auth/login','/auth/logout','/auth/demo']:
+        assert client.post('/api/v1'+path,json={}).status_code==404, path

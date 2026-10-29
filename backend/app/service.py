@@ -1,12 +1,9 @@
 import hashlib,json
 from datetime import timedelta
 from sqlalchemy import select
-from argon2 import PasswordHasher
-from .models import Session,User,Dataset,Article,Source,Job,Audit,Schedule
+from .models import Session,Dataset,Article,Source,Job,Audit,Schedule
 from .core import ROOT,settings,uid,now
 from .validators import parse_date,MOSCOW
-
-hasher=PasswordHasher()
 
 def article_data(a):
     return {**a.original,'id':a.original_id,'title':a.title,'text':a.text,'source':a.source,'url':a.url,
@@ -58,8 +55,6 @@ async def load_runtime_settings():
 
 async def seed():
     async with Session() as db:
-        if not await db.scalar(select(User.id).limit(1)):
-            db.add(User(email=settings.bootstrap_admin_email,password_hash=hasher.hash(settings.bootstrap_admin_password),role='admin'))
         path=ROOT/'config'/'sources.json'
         initial={name.strip() for name in settings.initial_source_names.split(',') if name.strip()}
         for source in json.loads(path.read_text(encoding='utf-8')):

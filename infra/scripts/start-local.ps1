@@ -97,4 +97,4 @@ if ((Test-Path -LiteralPath $taskPidPath) -and (Get-Item -LiteralPath $taskPidPa
 }
 $taskProcesses | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $taskPidPath -Encoding utf8
 Write-Host "Local website: http://localhost:$HttpPort"
-Write-Host 'Editor credentials are in .env. No server deployment performed.'
+Write-Host 'Workspace opens without a login. No server deployment performed.'

@@ -14,7 +14,7 @@ def email_html(data):
 
 def email_message(data,recipient=None):
     message=EmailMessage(policy=SMTP)
-    message['Subject']=data['subject']; message['From']=settings.smtp_from or 'preview@localhost'
+    message['Subject']=data['subject']; message['From']=(settings.smtp_from or 'preview@localhost') if recipient else 'preview@localhost'
     if recipient: message['To']=recipient
     message.set_content(data['full']); message.add_alternative(email_html(data),subtype='html')
     return message

@@ -199,13 +199,6 @@ async def scheduler_tick():
             if T and T<=now():
                 await enqueue(db,'collect',{'source_id':source.id,'limit':3},f'auto-collect:{source.id}:{T.isoformat()}')
                 source.meta={**source.meta,'next_collect_at':(now()+timedelta(minutes=source.meta.get('collect_interval_minutes',60))).isoformat()}
-        if settings.auto_send_enabled and settings.smtp_host:
-            allowed={x.strip().lower() for x in settings.recipient_allowlist.split(',') if x.strip()}
-            subscribers=(await db.scalars(select(Subscriber).where(Subscriber.active==True))).all()
-            digests=(await db.scalars(select(Digest).where(Digest.status=='approved',Digest.created_at>now()-timedelta(days=1)))).all()
-            for digest in digests:
-                for subscriber in subscribers:
-                    await enqueue(db,'email',{'digest_id':digest.id,'recipient':subscriber.email,'revision':digest.revision},f'email:{digest.id}:{digest.revision}:{subscriber.email}')
         await db.commit()
 
 async def main():

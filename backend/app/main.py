@@ -1,4 +1,4 @@
-import asyncio, hashlib, io, json, re, secrets, time
+import asyncio, hashlib, io, json, re, secrets
 from contextlib import asynccontextmanager
 from datetime import datetime,timedelta
 from urllib.parse import urlsplit
@@ -6,10 +6,9 @@ from fastapi import FastAPI,Depends,HTTPException,Request,UploadFile,File,Form
 from fastapi.responses import Response,HTMLResponse,JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import select,func,text as sqltext
-from argon2.exceptions import VerificationError
-from .models import Session,User,Dataset,Article,Source,Run,Digest,Job,Schedule,Subscriber,Audit,Event,ModelCall
+from .models import Session,Dataset,Article,Source,Run,Digest,Job,Schedule,Subscriber,Audit,Event,ModelCall
 from .core import settings,uid,now,iso
-from .service import hasher,seed,import_records,enqueue,article_data,load_runtime_settings
+from .service import seed,import_records,enqueue,article_data,load_runtime_settings
 from .validators import parse_date,MOSCOW
 from .fixtures import DEMO,CONTROL,CASES
 from .pipeline import validation_for,render_digest
@@ -39,61 +38,50 @@ async def model_error(request,exc): return JSONResponse({'detail':str(exc)},stat
 async def db_session():
     async with Session() as db: yield db
 
-async def user(request:Request,db=Depends(db_session)):
-    id=request.session.get('user_id')
-    if id=='demo-viewer' and settings.enable_demo and settings.app_env=='local': return {'id':id,'email':'Демонстрационный просмотр','role':'viewer'}
-    record=await db.get(User,id) if id else None
-    if not record: raise HTTPException(401,'Войдите в рабочий кабинет')
-    if request.method not in ('GET','HEAD','OPTIONS'):
-        if request.headers.get('X-CSRF-Token')!=request.session.get('csrf'): raise HTTPException(403,'CSRF token отсутствует или неверен')
+async def user(request:Request):
+    # This is an open shared workspace. The cookie is CSRF protection only.
+    request.session.pop('user_id',None)
+    if request.method in ('GET','HEAD','OPTIONS'):
+        if not request.session.get('csrf'):request.session['csrf']=secrets.token_urlsafe(32)
+    else:
+        token=request.session.get('csrf')
+        if not token or not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),token):
+            raise HTTPException(403,'Обновите страницу перед выполнением действия')
         origin=request.headers.get('origin')
         if origin and urlsplit(origin).netloc not in {request.url.netloc,urlsplit(settings.public_base_url).netloc,'localhost:6752','127.0.0.1:6752'}:
             raise HTTPException(403,'Недопустимый Origin')
-    return {'id':record.id,'email':record.email,'role':record.role}
+    return {'id':'shared-workspace','email':'Общая редакция','role':'editor'}
 
 async def editor(u=Depends(user)):
-    if u['role'] not in ('admin','editor'): raise HTTPException(403,'Требуется роль редактора')
     return u
 
-async def admin(u=Depends(editor)):
-    if u['role']!='admin': raise HTTPException(403,'Требуется роль администратора')
-    return u
+async def admin():
+    raise HTTPException(403,'Настройки сервера и отправка писем недоступны в открытой редакции')
+
+async def check_processing_budget(db):
+    start=now().astimezone(MOSCOW).replace(hour=0,minute=0,second=0,microsecond=0)
+    calls=await db.scalar(select(func.count()).select_from(ModelCall).where(ModelCall.created_at>=start))
+    if calls>=settings.public_model_call_limit:
+        raise HTTPException(429,'Достигнут суточный лимит обработки. Сохранённые материалы и выпуски доступны.')
+
 
 def out_job(job):
-    return {'id':job.id,'kind':job.kind,'status':job.status,'stage':job.stage,'progress':job.progress,'payload':job.payload,
-        'result':job.result,'error':job.error,'created_at':iso(job.created_at),'finished_at':iso(job.finished_at)}
+    payload=job.payload
+    result=job.result
+    error=job.error
+    if job.kind=='email':
+        payload={key:value for key,value in payload.items() if key!='recipient'}
+        result={key:value for key,value in (result or {}).items() if key!='recipient'}
+        error='Ошибка отправки письма' if error else None
+    return {'id':job.id,'kind':job.kind,'status':job.status,'stage':job.stage,'progress':job.progress,'payload':payload,
+        'result':result,'error':error,'created_at':iso(job.created_at),'finished_at':iso(job.finished_at)}
 
 def out_digest(d):
     return {'id':d.id,'run_id':d.run_id,'revision':d.revision,'status':d.status,'created_at':iso(d.created_at),'data':d.data,'validation':d.validation}
 
-login_attempts={}
-@app.post('/api/v1/auth/login')
-async def login(body:dict,request:Request,db=Depends(db_session)):
-    key=request.client.host+':'+str(body.get('email','')).lower()
-    hits=[x for x in login_attempts.get(key,[]) if x>time.time()-60]
-    if len(hits)>=8: raise HTTPException(429,'Слишком много попыток. Повторите через минуту.')
-    login_attempts[key]=hits+[time.time()]
-    u=await db.scalar(select(User).where(User.email==body.get('email','').lower()))
-    valid=False
-    if u:
-        try: valid=await asyncio.to_thread(hasher.verify,u.password_hash,str(body.get('password','')))
-        except VerificationError: pass
-    if not valid: raise HTTPException(401,'Неверный адрес или пароль')
-    request.session.clear(); request.session['user_id']=u.id; request.session['csrf']=secrets.token_urlsafe(32)
-    return {'user':{'email':u.email,'role':u.role},'csrf':request.session['csrf']}
-
-@app.post('/api/v1/auth/demo')
-async def demo_login(request:Request):
-    if not settings.enable_demo or settings.app_env!='local': raise HTTPException(404)
-    request.session.clear();request.session['user_id']='demo-viewer';request.session['csrf']=secrets.token_urlsafe(32)
-    return {'role':'viewer','csrf':request.session['csrf']}
-
-@app.get('/api/v1/auth/me')
-async def me(request:Request,u=Depends(user)): return {'user':u,'csrf':request.session.get('csrf')}
-
-@app.post('/api/v1/auth/logout')
-async def logout(request:Request,u=Depends(user)):
-    request.session.clear(); return {'ok':True}
+@app.get('/api/v1/workspace')
+async def workspace(request:Request,u=Depends(user)):
+    return {'user':u,'csrf':request.session['csrf']}
 
 @app.get('/api/v1/health/live')
 async def live(): return {'status':'ok'}
@@ -180,6 +168,7 @@ async def create_run(body:dict,u=Depends(editor),db=Depends(db_session)):
         if old:return out_job(old)
     active=await db.scalar(select(func.count()).select_from(Job).where(Job.status.in_(['queued','running']),Job.kind=='process'))
     if active>=3: raise HTTPException(429,'В очереди уже три выпуска. Дождитесь завершения.')
+    await check_processing_budget(db)
     records=(await db.scalars(select(Article).where(Article.dataset_id==dataset.id).order_by(Article.original_id))).all()
     if len(records)>100: raise HTTPException(422,'Один запуск ограничен 100 статьями; разделите набор')
     run=Run(id=uid(),dataset_id=dataset.id,mode=mode,control_time=T,snapshot=[article_data(a) for a in records])
@@ -193,6 +182,7 @@ async def collect_and_generate(body:dict,u=Depends(editor),db=Depends(db_session
     if not count:raise HTTPException(409,'Включите хотя бы один источник')
     active=await db.scalar(select(func.count()).select_from(Job).where(Job.status.in_(['queued','running']),Job.kind.in_(['process','daily'])))
     if active>=3:raise HTTPException(429,'Дождитесь завершения текущих выпусков')
+    await check_processing_budget(db)
     job=await enqueue(db,'daily',{'control_time':now().isoformat()},body.get('idempotency_key'))
     await db.commit();return out_job(job)
 
@@ -214,6 +204,7 @@ async def retry_job(id:str,u=Depends(editor),db=Depends(db_session)):
     job=await db.get(Job,id)
     if not job or job.status not in ('failed','cancelled'): raise HTTPException(409,'Повтор допустим только после ошибки или отмены')
     if job.kind=='email': raise HTTPException(409,'Проверьте результат отправки, создайте новый тест вручную')
+    if job.kind in ('process','daily'):await check_processing_budget(db)
     job.status='queued';job.error=None;job.progress=0;job.stage='Повтор';await db.commit();return out_job(job)
 
 @app.get('/api/v1/runs/{id}')
@@ -227,6 +218,7 @@ async def get_run(id:str,u=Depends(user),db=Depends(db_session)):
 async def regroup(id:str,body:dict,u=Depends(editor),db=Depends(db_session)):
     old=await db.get(Run,id)
     if not old or old.status!='succeeded':raise HTTPException(409,'Выберите завершённый запуск')
+    await check_processing_budget(db)
     events=old.result.get('events',[])
     chosen=body.get('event_ids',[])
     if not set(chosen)<=set(e['event_id'] for e in events):raise ValueError('Неизвестное событие')
@@ -300,6 +292,7 @@ async def validate_digest(id:str,u=Depends(editor),db=Depends(db_session)):
     data=json.loads(json.dumps(d.data))
     validate_composition(data['items'],data['events'])
     if data['mode']=='live':
+        await check_processing_budget(db)
         run=await db.get(Run,d.run_id)
         data['semantic_verification']=await verify_sources(GigaChat(d.run_id),data['items'],data['events'],run.snapshot,run.control_time.isoformat())
     else:
@@ -350,7 +343,7 @@ async def preview(id:str,u=Depends(user),db=Depends(db_session)):
 
 @app.post('/api/v1/digests/{id}/send-test',status_code=202)
 @app.post('/api/v1/digests/{id}/send',status_code=202)
-async def send_test(id:str,body:dict,u=Depends(editor),db=Depends(db_session)):
+async def send_test(id:str,body:dict,u=Depends(admin),db=Depends(db_session)):
     d=await db.get(Digest,id)
     if not d or d.status!='approved': raise HTTPException(409,'Утвердите выпуск')
     recipient=str(body.get('recipient','')).lower()
@@ -403,7 +396,7 @@ async def tests(u=Depends(user),db=Depends(db_session)):
         'history':[{'id':r.entity_id,'mode':r.data['mode'],'passed':r.data['passed'],'total':r.data['total'],'created_at':iso(r.created_at)} for r in history]}
 
 @app.get('/api/v1/settings')
-async def settings_info(u=Depends(user),db=Depends(db_session)):
+async def settings_info(u=Depends(admin),db=Depends(db_session)):
     return {'gigachat_configured':bool(settings.gigachat_auth_key),'model':settings.gigachat_model,'scope':settings.gigachat_scope,
         'smtp_configured':bool(settings.smtp_host and settings.smtp_from),'smtp_host':settings.smtp_host,'recipient_allowlist':settings.recipient_allowlist,
         'mode':'production','timezone':'Europe/Moscow','app_env':settings.app_env,'public_base_url':settings.public_base_url,'auto_send':settings.auto_send_enabled}
@@ -473,7 +466,7 @@ async def toggle_schedule(id:str,body:dict,u=Depends(admin),db=Depends(db_sessio
     s.enabled=bool(body.get('enabled',s.enabled));await db.commit();return {'ok':True}
 
 @app.get('/api/v1/audit')
-async def audits(u=Depends(user),db=Depends(db_session)):
+async def audits(u=Depends(admin),db=Depends(db_session)):
     rows=(await db.scalars(select(Audit).order_by(Audit.created_at.desc()).limit(100))).all()
     return [{'id':a.id,'kind':a.kind,'entity_id':a.entity_id,'created_at':iso(a.created_at),
         'data':{k:v for k,v in a.data.items() if k not in ('results','data')}} for a in rows]

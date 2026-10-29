@@ -17,7 +17,7 @@ async def test_editor_csrf_accepts_only_same_proxy_origin(origin,allowed):
         'session':{'user_id':'editor','csrf':'valid-token'},'query_string':b''})
     class DB:
         async def get(self,*args):return SimpleNamespace(id='editor',email='unit@example.org',role='admin')
-    if allowed:assert (await user(request,DB()))['role']=='admin'
+    if allowed:assert (await user(request))['role']=='editor'
     else:
-        with pytest.raises(HTTPException) as error:await user(request,DB())
+        with pytest.raises(HTTPException) as error:await user(request)
         assert error.value.status_code==403

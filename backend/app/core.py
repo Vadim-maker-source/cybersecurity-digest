@@ -13,8 +13,7 @@ class Settings(BaseSettings):
     daily_schedule_enabled: bool = True
     database_url: str
     session_secret: str
-    bootstrap_admin_email: str = 'editor@localhost'
-    bootstrap_admin_password: str
+    bootstrap_admin_password: str = ''
     cookie_secure: bool = False
     public_base_url: str = 'http://localhost:6752'
     gigachat_auth_key: str = ''
@@ -34,6 +33,7 @@ class Settings(BaseSettings):
     smtp_from: str = ''
     recipient_allowlist: str = ''
     auto_send_enabled: bool = False
+    public_model_call_limit: int = 200
     max_upload_mb: int = 20
     max_fetch_response_mb: int = 5
     fetch_timeout_seconds: int = 20
