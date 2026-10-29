@@ -47,7 +47,7 @@ async def user(request:Request,db=Depends(db_session)):
     if request.method not in ('GET','HEAD','OPTIONS'):
         if request.headers.get('X-CSRF-Token')!=request.session.get('csrf'): raise HTTPException(403,'CSRF token отсутствует или неверен')
         origin=request.headers.get('origin')
-        if origin and urlsplit(origin).netloc not in {urlsplit(settings.public_base_url).netloc,'localhost:6752','127.0.0.1:6752'}:
+        if origin and urlsplit(origin).netloc not in {request.url.netloc,urlsplit(settings.public_base_url).netloc,'localhost:6752','127.0.0.1:6752'}:
             raise HTTPException(403,'Недопустимый Origin')
     return {'id':record.id,'email':record.email,'role':record.role}
 

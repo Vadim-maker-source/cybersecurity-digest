@@ -75,3 +75,14 @@ def validate_composition(items,events):
                 missing=set(re.findall(r'\d+(?:[.,]\d+)?',checked_text))-set(re.findall(r'\d+(?:[.,]\d+)?',evidence))
                 raise ValueError('UNSUPPORTED_NUMBER: '+', '.join(sorted(missing))+' в предложении '+sentence['text']+'. Удали числа/дату, которых нет в подтверждающих цитатах. Дата публикации не равна дате события.')
             if '\u2014' in sentence['text']: raise ValueError('LONG_DASH')
+
+def checked_compositions(items,events):
+    """After model repair attempts, retain only individually grounded events."""
+    if [i['event_id'] for i in items]!=[e['event_id'] for e in events]:
+        raise ValueError('EVENT_SET_MISMATCH')
+    accepted=[];selected=[];rejected={}
+    for item,event in zip(items,events):
+        try:validate_composition([item],[event])
+        except ValueError as exc:rejected[event['event_id']]=str(exc)
+        else:accepted.append(item);selected.append(event)
+    return accepted,selected,rejected

@@ -1,4 +1,4 @@
-param([int]$HttpPort=6752,[string]$PostgresBin='C:\Program Files\PostgreSQL\18\bin')
+param([int]$HttpPort=6752,[string]$PostgresBin='C:\Program Files\PostgreSQL\18\bin',[int]$FrontendPort=3000,[switch]$Production)
 $ErrorActionPreference='Stop'
 $taskRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $taskWork=Join-Path $taskRoot 'work'
@@ -71,7 +71,15 @@ if (!$taskWorker) { Start-TaskService 'worker' $taskPython @('-m','app.worker') 
  }
 }
 $taskNode=(Get-Command node.exe).Source
-Start-TaskService 'frontend' $taskNode @((Join-Path $taskRoot 'frontend\node_modules\next\dist\bin\next'),'dev','--hostname','127.0.0.1') (Join-Path $taskRoot 'frontend') 3000
+$taskFrontendCommand='dev'
+if ($Production) {
+ if (!(Test-Path -LiteralPath (Join-Path $taskRoot 'frontend\.next\BUILD_ID'))) {
+  Push-Location (Join-Path $taskRoot 'frontend')
+  try { npm.cmd run build; if ($LASTEXITCODE) { throw 'Production frontend build failed' } } finally { Pop-Location }
+ }
+ $taskFrontendCommand='start'
+}
+Start-TaskService 'frontend' $taskNode @((Join-Path $taskRoot 'frontend\node_modules\next\dist\bin\next'),$taskFrontendCommand,'--hostname','127.0.0.1','--port',"$FrontendPort") (Join-Path $taskRoot 'frontend') $FrontendPort
 $taskNginx=Join-Path $taskWork 'runtime\nginx-1.30.6\nginx.exe'
 if (!(Test-Path -LiteralPath $taskNginx)) {
  Invoke-WebRequest -Uri 'https://nginx.org/download/nginx-1.30.6.zip' -OutFile (Join-Path $taskWork 'nginx.zip')
@@ -80,7 +88,7 @@ if (!(Test-Path -LiteralPath $taskNginx)) {
 $taskPrefix=Join-Path $taskWork 'nginx-prefix'
 New-Item -ItemType Directory -Force -Path (Join-Path $taskPrefix 'logs'),(Join-Path $taskPrefix 'temp') | Out-Null
 $taskConfig=Join-Path $taskWork 'nginx-local.conf'
-(Get-Content -LiteralPath 'infra\nginx\local.conf' -Raw).Replace('127.0.0.1:6752',"127.0.0.1:$HttpPort") | Set-Content -LiteralPath $taskConfig -Encoding ascii
+(Get-Content -LiteralPath 'infra\nginx\local.conf' -Raw).Replace('127.0.0.1:6752',"127.0.0.1:$HttpPort").Replace('127.0.0.1:3000',"127.0.0.1:$FrontendPort") | Set-Content -LiteralPath $taskConfig -Encoding ascii
 Start-TaskService 'nginx' $taskNginx @('-p',($taskPrefix.Replace('\','/')+'/'),'-c',$taskConfig.Replace('\','/'),'-g','"daemon off;"') $taskPrefix $HttpPort
 $taskPidPath=Join-Path $taskWork 'local-processes.json'
 if ((Test-Path -LiteralPath $taskPidPath) -and (Get-Item -LiteralPath $taskPidPath).Length -gt 0) {

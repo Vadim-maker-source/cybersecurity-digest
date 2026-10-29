@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 test('Рабочая редакция без демонстрационных данных',async({page})=>{
  const password=process.env.E2E_EDITOR_PASSWORD;
  test.skip(!password,'Set E2E_EDITOR_PASSWORD');
- await page.goto(process.env.E2E_BASE_URL||'http://localhost:6752');
+ await page.goto((process.env.E2E_BASE_URL||'http://localhost:6752').replace(/\/$/,'')+'/editor');
  await page.getByLabel('Email',{exact:true}).fill(process.env.E2E_EDITOR_EMAIL||'editor@localhost');
  await page.getByLabel('Пароль',{exact:true}).fill(password!);
  await page.getByRole('button',{name:'Войти',exact:true}).click();

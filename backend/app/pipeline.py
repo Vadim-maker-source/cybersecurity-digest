@@ -2,7 +2,7 @@ import hashlib, json, re, time
 from pathlib import Path
 from datetime import timedelta
 from .schemas import Extraction, Grouping, Ranking, Composition, Verification
-from .validators import parse_date, period_reason, safe_display_url, validate_quote, validate_composition, count_chars, MOSCOW
+from .validators import parse_date, period_reason, safe_display_url, validate_quote, validate_composition, checked_compositions, count_chars, MOSCOW
 from .llm import GigaChat, ModelError
 from .verification import verify_sources,restrict_consequences
 from .core import ROOT
@@ -258,10 +258,12 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
         elif d['event_group_ids']: d.update(status='not_selected',reason_code='RELEVANT_NOT_SELECTED',reason_text=REASONS['RELEVANT_NOT_SELECTED'])
     await report('Дайджест и короткий пост',80)
     items=[]
-    composition_repairs=[]
+    composition_repairs=list(checkpoint.get('composition_repairs',[]))
+    composition_rejections=checkpoint.get('composition_rejections',{})
     if selected:
         if checkpoint.get('items') is not None:
             items=checkpoint['items']
+            selected=[e for e in selected if e['event_id'] not in composition_rejections]
         elif model:
             feedback=''
             compose_events=[{**e,'sources':[{k:s[k] for k in ('id','source')} for s in e['sources']]} for e in selected]
@@ -289,7 +291,9 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
                                     item['consequences']={'text':fact['text'].replace('\u2014','-'),'claim_ids':[fact['claim_id']]}
                                 else:item['consequences']={'text':'В подтверждённых фрагментах последствия не указаны.','claim_ids':[]}
                                 composition_repairs.append({'event_id':event['event_id'],'field':'consequences','reason':'Неподтверждённый вывод модели заменён подтверждённым фактом либо явным отсутствием данных.'})
-                        validate_composition(items,selected)
+                        items,selected,rejected=checked_compositions(items,selected)
+                        composition_rejections.update(rejected)
+                        composition_repairs.extend({'event_id':eid,'field':'event','reason':reason,'action':'excluded'} for eid,reason in rejected.items())
         else:
             for e in selected:
                 facts=list({c['text']:c for c in e['claims']}.values())
@@ -305,7 +309,20 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
                     'summary':summary,'consequences':sentences[1] if len(sentences)>1 else {'text':'В источнике не указано.','claim_ids':[]},'short':short})
         align_formats(items,selected)
         validate_composition(items,selected)
-    await cache(stage='verify',groups=groups,ranking=ranking,items=items)
+    for event in events:
+        if event['event_id'] in composition_rejections:
+            event['selected']=False
+            event['ranking']['reason']='Не включено после проверки фактов: '+composition_rejections[event['event_id']]
+    for decision in decisions:
+        removed=[eid for eid in decision.get('selected_event_ids',[]) if eid in composition_rejections]
+        if removed:
+            decision['selected_event_ids']=[eid for eid in decision['selected_event_ids'] if eid not in composition_rejections]
+            decision.setdefault('warnings',[]).append('COMPOSITION_VALIDATION_FAILED')
+            if not decision['selected_event_ids']:
+                decision.update(status='not_selected',reason_code='COMPOSITION_VALIDATION_FAILED',
+                    reason_text='Пересказ не прошёл проверку после трёх попыток: '+'; '.join(composition_rejections[eid] for eid in removed))
+    await cache(stage='verify',groups=groups,ranking=ranking,items=items,
+        composition_rejections=composition_rejections,composition_repairs=composition_repairs)
     await report('Проверка фактов и лимитов',90)
     verification={'supported':True,'problems':[],'provider':'fixtures: структурные проверки, без смыслового подтверждения моделью'}
     if checkpoint.get('verification') is not None:verification=checkpoint['verification']
@@ -334,6 +351,7 @@ async def process(articles,control_time,mode='live',run_id=None,progress=None,gr
     for d in decisions:
         if d['status']=='excluded': exclusion_counts[d['reason_code']]=exclusion_counts.get(d['reason_code'],0)+1
     zero_reason='Подходящих подтверждённых событий для выпуска: '+str(len(selected))+'.'
+    if composition_rejections:zero_reason+=' Не включено после проверки фактов: '+str(len(composition_rejections))+'. Причины доступны в журнале.'
     if verification.get('excluded_events'):zero_reason+=' Не включено после смысловой проверки: '+str(len(verification['excluded_events']))+'. Подробности доступны в журнале.'
     if exclusion_counts: zero_reason+=' Исключено материалов: '+str(sum(exclusion_counts.values()))+'. Причины доступны в журнале.'
     data=render_digest(items,selected,T,zero_reason)
