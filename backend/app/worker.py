@@ -169,20 +169,29 @@ def safe_error(exc):
         if secret: value=value.replace(secret,'[скрыто]')
     return value or type(exc).__name__
 
+def schedule_window(schedule,current):
+    # Live feeds always cover the current 24 hours after a pause, not old days.
+    control=current if not schedule.dataset_id else schedule.next_run
+    next_run=current.astimezone(MOSCOW).replace(hour=schedule.hour,minute=schedule.minute,second=0,microsecond=0)
+    if next_run<=current:next_run+=timedelta(days=1)
+    return control,next_run.astimezone(timezone.utc)
+
 async def scheduler_tick():
+    current=now()
     async with Session() as db:
-        schedules=(await db.scalars(select(Schedule).where(Schedule.enabled==True,Schedule.next_run<=now()).with_for_update(skip_locked=True))).all()
+        schedules=(await db.scalars(select(Schedule).where(Schedule.enabled==True,Schedule.next_run<=current).with_for_update(skip_locked=True))).all()
         for schedule in schedules:
-            T=schedule.next_run
+            due=schedule.next_run
+            T,next_run=schedule_window(schedule,current)
             if schedule.dataset_id:
                 dataset=await db.get(Dataset,schedule.dataset_id)
                 articles=(await db.scalars(select(Article).where(Article.dataset_id==schedule.dataset_id))).all()
                 run=Run(id=uid(),dataset_id=schedule.dataset_id,mode=schedule.mode,control_time=T,snapshot=[article_data(a) for a in articles])
                 db.add(run); await db.flush()
-                await enqueue(db,'process',{'run_id':run.id},f'schedule:{schedule.id}:{T.isoformat()}')
+                await enqueue(db,'process',{'run_id':run.id},f'schedule:{schedule.id}:{due.isoformat()}')
             else:
-                await enqueue(db,'daily',{'schedule_id':schedule.id,'control_time':T.isoformat()},f'schedule:{schedule.id}:{T.isoformat()}')
-            schedule.last_run=T; schedule.next_run=T+timedelta(days=1)
+                await enqueue(db,'daily',{'schedule_id':schedule.id,'control_time':T.isoformat()},f'schedule:{schedule.id}:{due.isoformat()}')
+            schedule.last_run=T; schedule.next_run=next_run
         sources=(await db.scalars(select(Source).where(Source.enabled==True,Source.agreed==True).with_for_update(skip_locked=True))).all()
         for source in sources:
             if not source.meta.get('auto_collect'):continue

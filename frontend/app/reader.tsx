@@ -1,5 +1,6 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useRef} from 'react';
+import {pastDailyPeriod} from '../lib/time';
 import {ShieldCheck,ArrowUpRight,ArrowRight,Calendar,Mail,FileText,Copy,Download,RefreshCw,Loader2} from 'lucide-react';
 
 type Source={source:string,url:string,published_at:string,updated_at?:string};
@@ -7,15 +8,26 @@ type Story={id:string,title:string,summary:string[],consequences:string,sources:
 export type Digest={id:string,revision:number,status:string,title:string,subject:string,period:string,control_time:string,full:string,post:string,zero_events_reason:string,items:Story[]};
 const date=(value:string)=>value?new Date(value).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+' МСК':'Дата не подтверждена';
 
-export default function Reader({initialDigests=[],initialTab='full',initialId='',initialError=''}:{initialDigests?:Digest[],initialTab?:string,initialId?:string,initialError?:string}){
+export default function Reader({initialDigests=[],initialTab='full',initialId='',initialError='',initialNow}:{initialDigests?:Digest[],initialTab?:string,initialId?:string,initialError?:string,initialNow:string}){
  const [digests,setDigests]=useState<Digest[]>(initialDigests),[selected,setSelected]=useState(initialId),[tab,setTab]=useState(initialTab),[loading,setLoading]=useState(false),[error,setError]=useState(initialError),[message,setMessage]=useState('');
  const digest=digests.find(d=>d.id===selected)||digests[0];
- async function load(){
-  setLoading(true);setError('');
-  try{const response=await fetch('/api/v1/public/digests',{cache:'no-store',credentials:'omit'});if(!response.ok)throw new Error('Не удалось загрузить выпуски. Попробуйте ещё раз.');const data=await response.json();setDigests(data.items)}
+ const [clock,setClock]=useState(initialNow);
+ const offset=useRef(Date.parse(initialNow)-Date.now()),refreshing=useRef(false);
+ async function load(silent=false){
+  if(refreshing.current)return;
+  refreshing.current=true;
+  if(!silent)setLoading(true);setError('');
+  try{const response=await fetch('/api/v1/public/digests',{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Не удалось загрузить выпуски. Попробуйте ещё раз.');const data=await response.json();setDigests(data.items);if(data.server_time){offset.current=Date.parse(data.server_time)-Date.now();setClock(data.server_time)}}
   catch(e){setError(e instanceof Error?e.message:'Сервер недоступен. Попробуйте ещё раз.')}
-  finally{setLoading(false)}
+  finally{setLoading(false);refreshing.current=false}
  }
+ useEffect(()=>{
+  const refresh=()=>{setClock(new Date(Date.now()+offset.current).toISOString());if(!document.hidden)void load(true)};
+  const timer=setInterval(refresh,60000);
+  const visible=()=>{if(!document.hidden)refresh()};
+  window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',visible);
+  return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visible)};
+ },[]);
  useEffect(()=>{if(!message)return;const timer=setTimeout(()=>setMessage(''),4000);return()=>clearTimeout(timer)},[message]);
  const text=digest?(tab==='post'?digest.post:tab==='email'?'Тема: '+digest.subject+'\n\n'+digest.full:digest.full):'';
  async function copy(){try{await navigator.clipboard.writeText(text);setMessage('Текст скопирован')}catch{setMessage('Не удалось скопировать. Скачайте текст кнопкой рядом.')}}
@@ -23,11 +35,11 @@ export default function Reader({initialDigests=[],initialTab='full',initialId=''
  return <div className="reader-shell">
   <header className="reader-header"><a href="/" className="reader-brand"><span className="logo"><ShieldCheck size={23}/></span><span>КиберСводка<small>Ежедневный дайджест по кибербезопасности</small></span></a><a className="btn reader-login" href="/editor">Вход редактора <ArrowRight size={15}/></a></header>
   <main className="reader-main">
-   <section className="reader-intro"><span className="eyebrow">ДЛЯ РУКОВОДИТЕЛЕЙ И СПЕЦИАЛИСТОВ ПО ИБ</span><h1>Что произошло.<br/><span>Кого затронуло. Какие последствия.</span></h1><p>До пяти событий за сутки. Факты, оговорки и ссылки на исходные публикации.</p></section>
+   <section className="reader-intro"><span className="eyebrow">ДЛЯ РУКОВОДИТЕЛЕЙ И СПЕЦИАЛИСТОВ ПО ИБ</span><h1>Что произошло.<br/><span>Кого затронуло. Какие последствия.</span></h1><p>До пяти событий за сутки. Факты, оговорки и ссылки на исходные публикации.</p><p className="reader-live-date">Сейчас: {date(clock)} · Выпуски обновляются автоматически</p></section>
    <div className="reader-controls"><label>Выпуск<select value={digest?.id||''} disabled={!digests.length} onChange={e=>{setSelected(e.target.value);setTab('full')}}>{digests.length?digests.map(d=><option key={d.id} value={d.id}>{d.period}</option>):<option value="">Пока нет выпусков</option>}</select></label><button className="btn" disabled={loading} onClick={()=>void load()}><RefreshCw size={15} className={loading?'spin':''}/> Обновить</button></div>
    {error&&<div className="error-box" role="alert">{error} <button className="text-button" onClick={()=>void load()}>Повторить</button></div>}
    {loading&&!digest?<div className="panel reader-empty" role="status"><Loader2 className="spin"/> Загружаем выпуски…</div>:!digest?error?null:<div className="panel reader-empty"><FileText size={30}/><h2>Выпуск готовится</h2><p>Проверенные материалы появятся здесь после обработки редакцией.</p></div>:<>
-    <div className="reader-meta"><span><Calendar size={15}/>{digest.period}</span><span>{digest.items.length} из 5 событий</span><span>Ревизия {digest.revision}</span></div>
+    {pastDailyPeriod(digest.control_time,clock)&&<div className="notice">Архивный выпуск за прошлые сутки. Даты исходных публикаций сохранены.</div>}<div className="reader-meta"><span><Calendar size={15}/>{digest.period}</span><span>{digest.items.length} из 5 событий</span><span>Ревизия {digest.revision}</span></div>
     <div className={'reader-status '+(digest.status==='approved'?'approved':'')}><ShieldCheck size={18}/><div><b>{digest.status==='approved'?'Выпуск утверждён редактором':'Предпросмотр выпуска · ожидает утверждения редактором'}</b><p>Автоматические проверки пройдены. Контрольное время: {date(digest.control_time)}.</p></div></div>
     <section className="panel reader-digest"><div className="reader-tabs" role="tablist" aria-label="Формат дайджеста">{[['full','Дайджест'],['reason','Почему выбрано'],['email','Письмо'],['post','Короткий пост']].map(([id,label])=><a key={id} href={'/?format='+id+'&digest='+digest.id} role="tab" aria-selected={tab===id} aria-controls="digest-content" id={'tab-'+id} onClick={event=>{event.preventDefault();setTab(id)}} className={tab===id?'active':''}>{label}</a>)}</div>
      <div id="digest-content" role="tabpanel" aria-labelledby={'tab-'+tab} className="reader-body">

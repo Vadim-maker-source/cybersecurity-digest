@@ -110,7 +110,7 @@ async def overview(u=Depends(user),db=Depends(db_session)):
     counts={'articles':await db.scalar(select(func.count()).select_from(Article)),
         'datasets':len(datasets),'events':await db.scalar(select(func.count()).select_from(Event)),
         'digests':await db.scalar(select(func.count()).select_from(Digest)),'sources':await db.scalar(select(func.count()).select_from(Source).where(Source.enabled==True))}
-    return {'counts':counts,'datasets':[{'id':d.id,'name':d.name,'kind':d.kind,'created_at':iso(d.created_at),'checksum':d.checksum,'meta':d.meta,
+    return {'server_time':iso(now()),'counts':counts,'datasets':[{'id':d.id,'name':d.name,'kind':d.kind,'created_at':iso(d.created_at),'checksum':d.checksum,'meta':d.meta,
         'article_count':await db.scalar(select(func.count()).select_from(Article).where(Article.dataset_id==d.id))} for d in datasets],
         'digests':[out_digest(d) for d in digests],'jobs':[out_job(j) for j in jobs],
         'integrations':{'gigachat':bool(settings.gigachat_auth_key),'model':settings.gigachat_model,'smtp':bool(settings.smtp_host),'demo_enabled':settings.enable_demo,'app_env':settings.app_env,'public_base_url':settings.public_base_url}}
@@ -125,7 +125,7 @@ async def public_digests(response:Response,db=Depends(db_session)):
         .order_by(Digest.created_at.desc()).limit(20))
     records=(await db.scalars(stmt)).all()
     response.headers['Cache-Control']='no-store'
-    return {'items':[public_digest(d) for d in records]}
+    return {'server_time':iso(now()),'items':[public_digest(d) for d in records]}
 
 @app.get('/api/v1/articles')
 async def articles(dataset_id:str|None=None,query:str='',offset:int=0,limit:int=50,u=Depends(user),db=Depends(db_session)):
